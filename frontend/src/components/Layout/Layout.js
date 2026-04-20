@@ -1,12 +1,20 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import './Layout.css';
 
 const Layout = ({ children }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, isAdmin, logout } = useAuth();
 
   const isActive = (path) => {
     return location.pathname === path;
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login', { replace: true });
   };
 
   return (
@@ -30,16 +38,42 @@ const Layout = ({ children }) => {
               Clientes
             </Link>
             <Link 
-              to="/clientes/novo" 
-              className={`nav-link ${isActive('/clientes/novo') ? 'active' : ''}`}
+              to="/produtos" 
+              className={`nav-link ${isActive('/produtos') ? 'active' : ''}`}
             >
-              Novo Cliente
+              Produtos
             </Link>
+            <Link 
+              to="/orcamentos" 
+              className={`nav-link ${isActive('/orcamentos') ? 'active' : ''}`}
+            >
+              Orçamentos
+            </Link>
+            <Link 
+              to="/financeiro" 
+              className={`nav-link ${isActive('/financeiro') ? 'active' : ''}`}
+            >
+              Financeiro
+            </Link>
+
+            {isAdmin && (
+              <Link
+                to="/admin/usuarios"
+                className={`nav-link ${isActive('/admin/usuarios') ? 'active' : ''}`}
+              >
+                Admin
+              </Link>
+            )}
+
+            <span className="nav-user">{user?.username}</span>
+            <button type="button" className="nav-logout" onClick={handleLogout}>
+              Sair
+            </button>
           </div>
         </div>
       </nav>
       <main className="main-content">
-        {children}
+        {children || <Outlet />}
       </main>
     </div>
   );

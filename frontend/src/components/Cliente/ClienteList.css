@@ -58,6 +58,173 @@
   font-size: 1.1rem;
 }
 
+/* Tabela de Clientes - Design Moderno */
+.clientes-table-container {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+
+.clientes-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.clientes-table thead {
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.clientes-table th {
+  padding: 1.25rem 1.5rem;
+  text-align: left;
+  font-weight: 600;
+  color: #475569;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.clientes-table th.text-center {
+  text-align: center;
+}
+
+.clientes-table tbody tr {
+  border-bottom: 1px solid #f1f5f9;
+  transition: all 0.2s ease;
+}
+
+.clientes-table tbody tr:hover {
+  background-color: #fafbfc;
+  transform: scale(1.001);
+}
+
+.clientes-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.clientes-table td {
+  padding: 1.25rem 1.5rem;
+  color: #1e293b;
+}
+
+.cliente-nome {
+  font-weight: 600;
+}
+
+.nome-link {
+  color: #3b82f6;
+  text-decoration: none;
+  transition: color 0.2s ease;
+  font-weight: 600;
+}
+
+.nome-link:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.email-cell,
+.endereco-cell {
+  color: #64748b;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.375rem 0.75rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  min-width: 32px;
+}
+
+.actions-cell {
+  width: 100px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.btn-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: transparent;
+}
+
+.btn-action svg {
+  display: block;
+}
+
+.btn-action.btn-edit {
+  color: #3b82f6;
+}
+
+.btn-action.btn-edit:hover {
+  background: rgba(59, 130, 246, 0.1);
+  transform: scale(1.1);
+}
+
+.btn-action.btn-delete {
+  color: #dc2626;
+}
+
+.btn-action.btn-delete:hover {
+  background: rgba(220, 38, 38, 0.1);
+  transform: scale(1.1);
+}
+
+/* Responsividade */
+@media (max-width: 1200px) {
+  .clientes-table {
+    font-size: 0.875rem;
+  }
+  
+  .clientes-table th,
+  .clientes-table td {
+    padding: 1rem;
+  }
+  
+  .email-cell,
+  .endereco-cell {
+    max-width: 150px;
+  }
+}
+
+@media (max-width: 768px) {
+  .clientes-table-container {
+    overflow-x: auto;
+  }
+  
+  .clientes-table {
+    min-width: 900px;
+  }
+}
+
+/* Remoção dos estilos antigos de grid */
 .clientes-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
@@ -312,4 +479,59 @@
   .btn {
     width: 100%;
   }
+}
+
+/* Estilos para clientes excluídos */
+.deleted-card {
+  border: 2px solid #fecaca;
+  background: #fef2f2;
+  opacity: 0.8;
+}
+
+.deleted-card .card-header h3 {
+  color: #991b1b;
+}
+
+.btn-restore {
+  background: #10b981;
+  color: white;
+  border-radius: 50%;
+  width: 35px;
+  height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-restore:hover {
+  background: #059669;
+  transform: scale(1.1);
+}
+
+.status-deleted {
+  color: #991b1b;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: #fecaca;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.btn-success:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+.info {
+  color: #059669;
+  font-size: 0.9rem;
 }

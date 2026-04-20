@@ -10,8 +10,11 @@ const ClienteForm = () => {
 
   const [formData, setFormData] = useState({
     nome: '',
+    cpf_cnpj: '',
     telefone: '',
-    endereco: ''
+    email: '',
+    endereco: '',
+    observacao: ''
   });
 
   const [loading, setLoading] = useState(false);
@@ -30,8 +33,11 @@ const ClienteForm = () => {
       const cliente = response.data;
       setFormData({
         nome: cliente.nome || '',
+        cpf_cnpj: cliente.cpf_cnpj || '',
         telefone: cliente.telefone || '',
-        endereco: cliente.endereco || ''
+        email: cliente.email || '',
+        endereco: cliente.endereco || '',
+        observacao: cliente.observacao || ''
       });
     } catch (error) {
       console.error('Erro ao carregar cliente:', error);
@@ -68,8 +74,15 @@ const ClienteForm = () => {
       newErrors.telefone = 'Telefone é obrigatório';
     }
 
-    if (!formData.endereco.trim()) {
-      newErrors.endereco = 'Endereço é obrigatório';
+    if (formData.cpf_cnpj) {
+      const cleanedCpfCnpj = formData.cpf_cnpj.replace(/\D/g, '');
+      if (cleanedCpfCnpj.length !== 11 && cleanedCpfCnpj.length !== 14) {
+        newErrors.cpf_cnpj = 'CPF deve ter 11 dígitos ou CNPJ deve ter 14 dígitos';
+      }
+    }
+
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'Email inválido';
     }
 
     setErrors(newErrors);
@@ -148,6 +161,20 @@ const ClienteForm = () => {
         </div>
 
         <div className="form-group">
+          <label htmlFor="cpf_cnpj">CPF/CNPJ</label>
+          <input
+            type="text"
+            id="cpf_cnpj"
+            name="cpf_cnpj"
+            value={formData.cpf_cnpj}
+            onChange={handleChange}
+            className={errors.cpf_cnpj ? 'error' : ''}
+            placeholder="000.000.000-00 ou 00.000.000/0000-00"
+          />
+          {errors.cpf_cnpj && <span className="error-message">{errors.cpf_cnpj}</span>}
+        </div>
+
+        <div className="form-group">
           <label htmlFor="telefone">Telefone *</label>
           <input
             type="tel"
@@ -162,7 +189,21 @@ const ClienteForm = () => {
         </div>
 
         <div className="form-group">
-          <label htmlFor="endereco">Endereço *</label>
+          <label htmlFor="email">Email</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            className={errors.email ? 'error' : ''}
+            placeholder="exemplo@email.com"
+          />
+          {errors.email && <span className="error-message">{errors.email}</span>}
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="endereco">Endereço</label>
           <textarea
             id="endereco"
             name="endereco"
@@ -173,6 +214,20 @@ const ClienteForm = () => {
             rows="3"
           />
           {errors.endereco && <span className="error-message">{errors.endereco}</span>}
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="observacao">Observação</label>
+          <textarea
+            id="observacao"
+            name="observacao"
+            value={formData.observacao}
+            onChange={handleChange}
+            className={errors.observacao ? 'error' : ''}
+            placeholder="Observações adicionais sobre o cliente"
+            rows="3"
+          />
+          {errors.observacao && <span className="error-message">{errors.observacao}</span>}
         </div>
 
         <div className="form-actions">

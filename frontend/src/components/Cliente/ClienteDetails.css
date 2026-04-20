@@ -85,6 +85,19 @@
   word-break: break-word;
 }
 
+.info-item.full-width {
+  grid-column: 1 / -1;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.info-item.full-width span {
+  text-align: left;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
 .orcamentos-section {
   background: white;
   padding: 2rem;
@@ -186,10 +199,26 @@
   color: #991b1b;
 }
 
+.status.em_andamento {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.status.concluido {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status.cancelado {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
 .orcamento-content {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .orcamento-content p {
@@ -204,6 +233,20 @@
   color: #64748b;
   font-weight: 500;
   margin-right: 0.5rem;
+}
+
+.orcamento-actions {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.btn-sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
 }
 
 .btn {

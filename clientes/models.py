@@ -2,12 +2,39 @@ from django.db import models
 
 # Create your models here.
 
+class SoftDeleteManager(models.Manager):
+    """Manager personalizado para filtrar automaticamente registros excluídos"""
+    
+    def get_queryset(self):
+        return super().get_queryset().filter(deleted_at__isnull=True)
+
+
+class AllObjectsManager(models.Manager):
+    """Manager que inclui todos os registros, mesmo os excluídos"""
+    
+    def get_queryset(self):
+        return super().get_queryset()
+    
+    def only_deleted(self):
+        """Retorna apenas os registros excluídos"""
+        return self.get_queryset().filter(deleted_at__isnull=False)
+
+
 class Cliente(models.Model):
     nome = models.CharField(max_length=200, verbose_name="Nome")
-    telefone = models.CharField(max_length=20, verbose_name="Telefone")
-    endereco = models.TextField(verbose_name="Endereço")
+    cpf_cnpj = models.CharField(max_length=18, verbose_name="CPF/CNPJ", blank=True, null=True)
+    telefone = models.CharField(max_length=20, verbose_name="Telefone", unique=True)
+    email = models.EmailField(verbose_name="Email", blank=True, null=True)
+    endereco = models.TextField(verbose_name="Endereço", blank=True, null=True)
+    observacao = models.TextField(verbose_name="Observação", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Data de Criação")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Data de Atualização")
+    deleted_at = models.DateTimeField(null=True, blank=True, verbose_name="Data de Exclusão")
+
+    # Manager padrão que filtra automaticamente registros excluídos
+    objects = SoftDeleteManager()
+    # Manager que inclui todos os registros
+    all_objects = AllObjectsManager()
 
     class Meta:
         verbose_name = "Cliente"
@@ -16,33 +43,23 @@ class Cliente(models.Model):
 
     def __str__(self):
         return self.nome
-
-
-class Orcamento(models.Model):
-    cliente = models.ForeignKey(
-        Cliente, 
-        on_delete=models.CASCADE, 
-        related_name='orcamentos',
-        verbose_name="Cliente"
-    )
-    descricao = models.TextField(verbose_name="Descrição")
-    valor = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Valor")
-    data_orcamento = models.DateTimeField(auto_now_add=True, verbose_name="Data do Orçamento")
-    status = models.CharField(
-        max_length=20,
-        choices=[
-            ('pendente', 'Pendente'),
-            ('aprovado', 'Aprovado'),
-            ('rejeitado', 'Rejeitado'),
-        ],
-        default='pendente',
-        verbose_name="Status"
-    )
-
-    class Meta:
-        verbose_name = "Orçamento"
-        verbose_name_plural = "Orçamentos"
-        ordering = ['-data_orcamento']
-
-    def __str__(self):
-        return f"Orçamento {self.id} - {self.cliente.nome}"
+    
+    def delete(self, using=None, keep_parents=False):
+        """Override do método delete para realizar soft delete"""
+        from django.utils import timezone
+        self.deleted_at = timezone.now()
+        self.save(using=using)
+    
+    def hard_delete(self, using=None, keep_parents=False):
+        """Método para exclusão definitiva do banco"""
+        super().delete(using=using, keep_parents=keep_parents)
+    
+    def restore(self):
+        """Método para restaurar um registro excluído"""
+        self.deleted_at = None
+        self.save()
+    
+    @property
+    def is_deleted(self):
+        """Propriedade para verificar se o registro está excluído"""
+        return self.deleted_at is not None

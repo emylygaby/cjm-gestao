@@ -101,14 +101,34 @@ const ClienteDetails = () => {
               <label>Nome:</label>
               <span>{cliente.nome}</span>
             </div>
+            {cliente.cpf_cnpj && (
+              <div className="info-item">
+                <label>CPF/CNPJ:</label>
+                <span>{cliente.cpf_cnpj}</span>
+              </div>
+            )}
             <div className="info-item">
               <label>Telefone:</label>
               <span>{cliente.telefone}</span>
             </div>
-            <div className="info-item">
-              <label>Endereço:</label>
-              <span>{cliente.endereco}</span>
-            </div>
+            {cliente.email && (
+              <div className="info-item">
+                <label>Email:</label>
+                <span>{cliente.email}</span>
+              </div>
+            )}
+            {cliente.endereco && (
+              <div className="info-item">
+                <label>Endereço:</label>
+                <span>{cliente.endereco}</span>
+              </div>
+            )}
+            {cliente.observacao && (
+              <div className="info-item full-width">
+                <label>Observação:</label>
+                <span>{cliente.observacao}</span>
+              </div>
+            )}
             <div className="info-item">
               <label>Data de Cadastro:</label>
               <span>{new Date(cliente.created_at).toLocaleDateString('pt-BR')}</span>
@@ -138,17 +158,28 @@ const ClienteDetails = () => {
               {orcamentos.map(orcamento => (
                 <div key={orcamento.id} className="orcamento-card">
                   <div className="orcamento-header">
-                    <h3>Orçamento #{orcamento.id}</h3>
-                    <span className={`status ${orcamento.status}`}>
-                      {orcamento.status === 'pendente' && 'Pendente'}
-                      {orcamento.status === 'aprovado' && 'Aprovado'}
-                      {orcamento.status === 'rejeitado' && 'Rejeitado'}
+                    <h3>Orçamento #{orcamento.id.toString().padStart(5, '0')}</h3>
+                    <span className={`status ${orcamento.status.toLowerCase()}`}>
+                      {orcamento.status === 'PENDENTE' && 'Pendente'}
+                      {orcamento.status === 'APROVADO' && 'Aprovado'}
+                      {orcamento.status === 'REJEITADO' && 'Rejeitado'}
+                      {orcamento.status === 'EM_ANDAMENTO' && 'Em Andamento'}
+                      {orcamento.status === 'CONCLUIDO' && 'Concluído'}
+                      {orcamento.status === 'CANCELADO' && 'Cancelado'}
                     </span>
                   </div>
                   <div className="orcamento-content">
-                    <p><strong>Descrição:</strong> {orcamento.descricao}</p>
-                    <p><strong>Valor:</strong> R$ {parseFloat(orcamento.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                    <p><strong>Data:</strong> {new Date(orcamento.data_orcamento).toLocaleDateString('pt-BR')}</p>
+                    <p><strong>Data de Emissão:</strong> {new Date(orcamento.data_emissao).toLocaleDateString('pt-BR')}</p>
+                    <p><strong>Validade:</strong> {new Date(orcamento.data_validade).toLocaleDateString('pt-BR')}</p>
+                    <p><strong>Valor Total:</strong> R$ {parseFloat(orcamento.valor_total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                    {orcamento.observacoes && (
+                      <p><strong>Observações:</strong> {orcamento.observacoes}</p>
+                    )}
+                  </div>
+                  <div className="orcamento-actions">
+                    <Link to={`/orcamentos/${orcamento.id}`} className="btn btn-sm btn-primary">
+                      Ver Detalhes
+                    </Link>
                   </div>
                 </div>
               ))}

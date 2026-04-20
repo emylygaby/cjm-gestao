@@ -74,6 +74,28 @@
   border-radius: 1px;
 }
 
+.nav-user {
+  color: #dbeafe;
+  font-weight: 600;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+}
+
+.nav-logout {
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: transparent;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.nav-logout:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
 .main-content {
   flex: 1;
   background: linear-gradient(to bottom, #f8fafc, #f1f5f9);
@@ -100,6 +122,15 @@
   .nav-link {
     width: 100%;
     text-align: center;
+  }
+
+  .nav-user {
+    width: 100%;
+    text-align: center;
+  }
+
+  .nav-logout {
+    width: 100%;
   }
   
   .main-content {
