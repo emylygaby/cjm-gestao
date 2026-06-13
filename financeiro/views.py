@@ -226,20 +226,6 @@ class MovimentacaoFinanceiraViewSet(viewsets.ModelViewSet):
         # 3. Gastos fixos mensais projetados (da tabela GastoFixo)
         gastos_fixos_mensais = GastoFixo.objects.filter(periodo='MENSAL')
         
-        # 4. Buscar movimentações categorizadas (gastos fixos) criadas em meses anteriores
-        # Estas devem ser projetadas para o mês atual
-        # Busca apenas movimentações criadas ANTES do primeiro dia do mês consultado
-        # E que NÃO foram excluídas ATÉ o final do mês consultado (lógica de histórico)
-        # Se foi excluída DEPOIS do mês consultado ou não foi excluída, deve aparecer
-        movimentacoes_categorizadas = MovimentacaoFinanceira.all_objects.filter(
-            tipo_movimentacao='CATEGORIZADA',
-            tipo='SAIDA',
-            data_movimentacao__lt=primeiro_dia  # Criadas antes do mês consultado
-        ).filter(
-            Q(deleted_at__isnull=True) | Q(deleted_at__gt=ultimo_dia)
-            # deleted_at IS NULL (não foi excluída) OU deleted_at > ultimo_dia (foi excluída DEPOIS deste mês)
-        ).select_related('categoria').order_by('created_at')
-        
         # Serializa as movimentações reais
         movimentacoes_serializer = self.get_serializer(movimentacoes_reais, many=True)
         
@@ -287,45 +273,6 @@ class MovimentacaoFinanceiraViewSet(viewsets.ModelViewSet):
             }
             gastos_fixos_lista.append(gasto_info)
             total_gastos_fixos += gasto.valor
-        
-        # Adiciona movimentações categorizadas (gastos fixos recorrentes)
-        # Para cada movimentação categorizada, verifica se deve ser projetada para este mês
-        gastos_adicionados = set()  # Para evitar duplicatas
-        
-        for mov_cat in movimentacoes_categorizadas:
-            # Cria uma chave única para este gasto (descrição + valor + categoria)
-            categoria_nome = mov_cat.categoria.nome if mov_cat.categoria else 'Sem categoria'
-            chave_gasto = f"{mov_cat.descricao}_{mov_cat.valor}_{categoria_nome}"
-            
-            # Verifica se já não foi adicionado
-            if chave_gasto in gastos_adicionados:
-                continue
-            
-            # Verifica se já não existe uma movimentação real categorizada igual no mês
-            ja_existe = movimentacoes_reais.filter(
-                descricao=mov_cat.descricao,
-                valor=mov_cat.valor,
-                tipo_movimentacao='CATEGORIZADA',
-                categoria=mov_cat.categoria
-            ).exists()
-            
-            if not ja_existe:
-                # Projeta para o mês consultado, usando o mesmo dia ou último dia do mês
-                dia_vencimento = min(mov_cat.data_movimentacao.day, ultimo_dia_num)
-                data_projetada = datetime(ano, mes, dia_vencimento).date()
-                
-                gasto_info = {
-                    'id': f"gasto_fixo_cat_{mov_cat.id}",
-                    'tipo': 'GASTO_FIXO',
-                    'descricao': mov_cat.descricao,
-                    'valor': float(mov_cat.valor),
-                    'data_vencimento': data_projetada,
-                    'categoria': categoria_nome,
-                    'periodo': 'Mensal (Recorrente)'
-                }
-                gastos_fixos_lista.append(gasto_info)
-                total_gastos_fixos += mov_cat.valor
-                gastos_adicionados.add(chave_gasto)
         
         # Calcula totais das movimentações reais
         entradas_reais = movimentacoes_reais.filter(tipo='ENTRADA').aggregate(total=Sum('valor'))['total'] or 0

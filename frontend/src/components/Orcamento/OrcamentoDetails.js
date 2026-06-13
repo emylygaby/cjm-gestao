@@ -5,6 +5,15 @@ import PagamentoModal from './PagamentoModal';
 import './OrcamentoDetails.css';
 
 const OrcamentoDetails = () => {
+  const STATUS_TRANSITIONS = {
+    PENDENTE: ['APROVADO', 'REJEITADO'],
+    APROVADO: ['EM_ANDAMENTO', 'CANCELADO'],
+    EM_ANDAMENTO: ['CONCLUIDO', 'CANCELADO'],
+    REJEITADO: [],
+    CONCLUIDO: [],
+    CANCELADO: []
+  };
+
   const { id } = useParams();
   const navigate = useNavigate();
   const [orcamento, setOrcamento] = useState(null);
@@ -48,7 +57,21 @@ const OrcamentoDetails = () => {
     navigate('/orcamentos');
   };
 
+  const getSelectableStatuses = (currentStatus) => {
+    const allowedNext = STATUS_TRANSITIONS[currentStatus] || [];
+    return [currentStatus, ...allowedNext];
+  };
+
   const handleStatusChange = async (newStatus) => {
+    if (!orcamento || newStatus === orcamento.status) return;
+
+    const fromLabel = getStatusLabel(orcamento.status);
+    const toLabel = getStatusLabel(newStatus);
+    const ok = window.confirm(
+      `Atenção: ao alterar o status, não é possível voltar.\n\nAlterar de "${fromLabel}" para "${toLabel}"?`
+    );
+    if (!ok) return;
+
     // Se o novo status for EM_ANDAMENTO, abre o modal de pagamento
     if (newStatus === 'EM_ANDAMENTO') {
       setPendingStatus(newStatus);
@@ -176,13 +199,13 @@ const OrcamentoDetails = () => {
                 onChange={(e) => handleStatusChange(e.target.value)}
                 className="status-select"
               >
-                <option value="PENDENTE">Pendente</option>
-                <option value="APROVADO">Aprovado</option>
-                <option value="REJEITADO">Rejeitado</option>
-                <option value="EM_ANDAMENTO">Em Andamento</option>
-                <option value="CONCLUIDO">Concluído</option>
-                <option value="CANCELADO">Cancelado</option>
+                {getSelectableStatuses(orcamento.status).map((status) => (
+                  <option key={status} value={status}>
+                    {getStatusLabel(status)}
+                  </option>
+                ))}
               </select>
+              <small className="info-label">Atenção: ao avançar o status, não é possível voltar.</small>
             </div>
             <div className="info-item">
               <span className="info-label">Criado em:</span>

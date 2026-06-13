@@ -9,6 +9,17 @@ const OrcamentoForm = () => {
   const { id } = useParams();
   const isEditing = Boolean(id);
 
+  const STATUS_TRANSITIONS = {
+    PENDENTE: ['APROVADO', 'REJEITADO'],
+    APROVADO: ['EM_ANDAMENTO', 'CANCELADO'],
+    EM_ANDAMENTO: ['CONCLUIDO', 'CANCELADO'],
+    REJEITADO: [],
+    CONCLUIDO: [],
+    CANCELADO: []
+  };
+
+  const ALL_STATUSES = ['PENDENTE', 'APROVADO', 'REJEITADO', 'EM_ANDAMENTO', 'CONCLUIDO', 'CANCELADO'];
+
   const [formData, setFormData] = useState({
     cliente: '',
     data_emissao: new Date().toISOString().split('T')[0],
@@ -157,8 +168,41 @@ const OrcamentoForm = () => {
     }
   };
 
+  const getStatusLabel = (status) => {
+    const statusLabels = {
+      PENDENTE: 'Pendente',
+      APROVADO: 'Aprovado',
+      REJEITADO: 'Rejeitado',
+      EM_ANDAMENTO: 'Em Andamento',
+      CONCLUIDO: 'Concluído',
+      CANCELADO: 'Cancelado'
+    };
+    return statusLabels[status] || status;
+  };
+
+  const getSelectableStatuses = (currentStatus) => {
+    const allowedNext = STATUS_TRANSITIONS[currentStatus] || [];
+    return [currentStatus, ...allowedNext];
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    if (name === 'status' && isEditing) {
+      const fromStatus = formData.status;
+      if (value !== fromStatus) {
+        const selectable = getSelectableStatuses(fromStatus);
+        if (!selectable.includes(value)) {
+          setErrors(prev => ({ ...prev, general: 'Transição de status inválida.' }));
+          return;
+        }
+
+        const ok = window.confirm(
+          `Atenção: ao alterar o status, não é possível voltar.\n\nAlterar de "${getStatusLabel(fromStatus)}" para "${getStatusLabel(value)}"?`
+        );
+        if (!ok) return;
+      }
+    }
     
     // Se está mudando o status para EM_ANDAMENTO e o status anterior não era EM_ANDAMENTO
     if (name === 'status' && value === 'EM_ANDAMENTO' && statusAnterior !== 'EM_ANDAMENTO' && isEditing) {
@@ -502,13 +546,15 @@ const OrcamentoForm = () => {
                 value={formData.status}
                 onChange={handleChange}
               >
-                <option value="PENDENTE">Pendente</option>
-                <option value="APROVADO">Aprovado</option>
-                <option value="REJEITADO">Rejeitado</option>
-                <option value="EM_ANDAMENTO">Em Andamento</option>
-                <option value="CONCLUIDO">Concluído</option>
-                <option value="CANCELADO">Cancelado</option>
+                {(isEditing ? getSelectableStatuses(formData.status) : ALL_STATUSES).map((status) => (
+                  <option key={status} value={status}>
+                    {getStatusLabel(status)}
+                  </option>
+                ))}
               </select>
+              {isEditing && (
+                <small className="hint">Atenção: ao avançar o status, não é possível voltar.</small>
+              )}
             </div>
           </div>
 

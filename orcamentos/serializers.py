@@ -79,6 +79,14 @@ class OrcamentoCreateUpdateSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     'data_validade': 'A data de validade deve ser posterior à data de emissão.'
                 })
+
+        # Regra: não permite voltar o status (evita duplicações de pagamento/parcelas).
+        if self.instance is not None and 'status' in data:
+            novo_status = data.get('status')
+            if novo_status and not self.instance.pode_alterar_para(novo_status):
+                raise serializers.ValidationError({
+                    'status': f"Transição de status inválida: não é permitido voltar de {self.instance.status} para {novo_status}."
+                })
         
         return data
     

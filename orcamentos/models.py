@@ -33,6 +33,21 @@ class Orcamento(models.Model):
         ('CONCLUIDO', 'Concluído'),
         ('CANCELADO', 'Cancelado'),
     ]
+
+    # Regras explícitas de transição de status (negócio):
+    # - PENDENTE -> APROVADO ou REJEITADO
+    # - APROVADO -> EM_ANDAMENTO ou CANCELADO
+    # - REJEITADO -> terminal
+    # - EM_ANDAMENTO -> CONCLUIDO ou CANCELADO
+    # - CONCLUIDO/CANCELADO -> terminal
+    STATUS_TRANSITIONS = {
+        'PENDENTE': {'APROVADO', 'REJEITADO'},
+        'APROVADO': {'EM_ANDAMENTO', 'CANCELADO'},
+        'REJEITADO': set(),
+        'EM_ANDAMENTO': {'CONCLUIDO', 'CANCELADO'},
+        'CONCLUIDO': set(),
+        'CANCELADO': set(),
+    }
     
     TIPO_ORCAMENTO_CHOICES = [
         ('PRODUTO', 'Produtos'),
@@ -107,6 +122,21 @@ class Orcamento(models.Model):
     
     def __str__(self):
         return f"Orçamento #{self.id} - {self.cliente.nome}"
+
+    def pode_alterar_para(self, novo_status):
+        """Valida transição de status conforme STATUS_TRANSITIONS."""
+        if not novo_status:
+            return True
+
+        atual = self.status
+        if novo_status == atual:
+            return True
+
+        # Se status atual é desconhecido (não deveria acontecer), bloqueia por segurança.
+        if atual not in self.STATUS_TRANSITIONS:
+            return False
+
+        return novo_status in self.STATUS_TRANSITIONS[atual]
     
     def delete(self, using=None, keep_parents=False):
         """Override do método delete para realizar soft delete"""

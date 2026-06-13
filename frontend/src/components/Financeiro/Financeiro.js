@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { categoriaFinanceiraService, movimentacaoFinanceiraService } from '../../services/api';
+import { categoriaFinanceiraService, movimentacaoFinanceiraService, gastoFixoService } from '../../services/api';
 import './Financeiro.css';
 
 const Financeiro = () => {
@@ -16,6 +16,7 @@ const Financeiro = () => {
   const [mesSelecionado, setMesSelecionado] = useState(hoje.getMonth() + 1); // 1-12
   const [anoSelecionado, setAnoSelecionado] = useState(hoje.getFullYear());
   const [previsaoMensal, setPrevisaoMensal] = useState(null);
+  const [editingGastoFixoId, setEditingGastoFixoId] = useState(null);
   
   const [formData, setFormData] = useState({
     descricao: '',
@@ -24,6 +25,7 @@ const Financeiro = () => {
     tipo: 'SAIDA',
     tipo_movimentacao: 'COMUM',
     data_movimentacao: new Date().toISOString().split('T')[0],
+    dia_vencimento: '',
     categoria: '',
     orcamento: ''
   });
@@ -135,10 +137,27 @@ const Financeiro = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => {
+      const next = {
+        ...prev,
+        [name]: value
+      };
+
+      if (name === 'tipo_movimentacao') {
+        // Para gasto fixo (categorizado), sempre tratamos como SAÍDA.
+        if (value === 'CATEGORIZADA') {
+          next.tipo = 'SAIDA';
+          next.orcamento = '';
+          next.detalhes = '';
+        }
+
+        // Se o usuário alternar o tipo, limpa estados de edição.
+        setEditingMovimentacao(null);
+        setEditingGastoFixoId(null);
+      }
+
+      return next;
+    });
     
     if (formErrors[name]) {
       setFormErrors(prev => ({
@@ -151,9 +170,11 @@ const Financeiro = () => {
   const validateForm = () => {
     const newErrors = {};
 
-    // Descrição é obrigatória apenas para movimentações comuns
-    if (formData.tipo_movimentacao === 'COMUM' && !formData.descricao.trim()) {
-      newErrors.descricao = 'Descrição é obrigatória para movimentações comuns';
+    // Descrição/Nome é obrigatório
+    if (!formData.descricao.trim()) {
+      newErrors.descricao = formData.tipo_movimentacao === 'CATEGORIZADA'
+        ? 'Nome do gasto fixo é obrigatório'
+        : 'Descrição é obrigatória para movimentações comuns';
     }
 
     // Categoria é obrigatória apenas para movimentações categorizadas (gastos fixos)
@@ -161,12 +182,19 @@ const Financeiro = () => {
       newErrors.categoria = 'Categoria é obrigatória para gastos fixos';
     }
 
+    if (formData.tipo_movimentacao === 'CATEGORIZADA') {
+      const dia = parseInt(formData.dia_vencimento, 10);
+      if (isNaN(dia) || dia < 1 || dia > 31) {
+        newErrors.dia_vencimento = 'Dia de vencimento deve estar entre 1 e 31';
+      }
+    }
+
     const valor = parseFloat(formData.valor);
     if (isNaN(valor) || valor <= 0) {
       newErrors.valor = 'Valor deve ser maior que zero';
     }
 
-    if (!formData.data_movimentacao) {
+    if (formData.tipo_movimentacao === 'COMUM' && !formData.data_movimentacao) {
       newErrors.data_movimentacao = 'Data é obrigatória';
     }
 
@@ -183,6 +211,29 @@ const Financeiro = () => {
 
     try {
       setLoading(true);
+
+      // === GASTO FIXO (REGRA RECORRENTE) ===
+      if (formData.tipo_movimentacao === 'CATEGORIZADA') {
+        const payload = {
+          nome: formData.descricao.trim(),
+          valor: parseFloat(formData.valor),
+          periodo: 'MENSAL',
+          dia_vencimento: parseInt(formData.dia_vencimento, 10),
+          categoria: parseInt(formData.categoria)
+        };
+
+        if (editingGastoFixoId) {
+          await gastoFixoService.updateGastoFixo(editingGastoFixoId, payload);
+        } else {
+          await gastoFixoService.createGastoFixo(payload);
+        }
+
+        await fetchMovimentacoes();
+        resetForm();
+        setShowForm(false);
+        setError('');
+        return;
+      }
       
       const dataToSend = {
         descricao: formData.descricao,
@@ -220,35 +271,83 @@ const Financeiro = () => {
     }
   };
 
-  const getIdOriginal = (item) => {
-    // Se for um gasto fixo projetado, extrai o ID original
+  const getMovimentacaoIdOriginal = (item) => {
+    // Gastos fixos "inferidos" a partir de movimentações categorizadas antigas
     if (item.tipoItem === 'gasto_fixo' && typeof item.id === 'string' && item.id.startsWith('gasto_fixo_cat_')) {
-      return parseInt(item.id.replace('gasto_fixo_cat_', ''));
+      return parseInt(item.id.replace('gasto_fixo_cat_', ''), 10);
     }
     return item.id;
   };
 
+  const getGastoFixoIdOriginal = (item) => {
+    // Gastos fixos vindos da tabela GastoFixo
+    if (item.tipoItem === 'gasto_fixo' && typeof item.id === 'string' && item.id.startsWith('gasto_fixo_') && !item.id.startsWith('gasto_fixo_cat_')) {
+      return parseInt(item.id.replace('gasto_fixo_', ''), 10);
+    }
+    return null;
+  };
+
   const handleEdit = async (movimentacao) => {
     try {
-      let movimentacaoParaEditar = movimentacao;
-      
-      // Se for um gasto fixo projetado, busca a movimentação original do backend
+      // Se for um gasto fixo vindo da tabela GastoFixo, edita como regra recorrente
       if (movimentacao.tipoItem === 'gasto_fixo') {
-        const idOriginal = getIdOriginal(movimentacao);
+        const gastoFixoId = getGastoFixoIdOriginal(movimentacao);
+        if (gastoFixoId) {
+          const response = await gastoFixoService.getGastoFixo(gastoFixoId);
+          const gasto = response.data;
+          setEditingGastoFixoId(gasto.id);
+          setEditingMovimentacao(null);
+          setFormData({
+            descricao: gasto.nome || '',
+            detalhes: '',
+            valor: (gasto.valor ?? '').toString(),
+            tipo: 'SAIDA',
+            tipo_movimentacao: 'CATEGORIZADA',
+            data_movimentacao: new Date().toISOString().split('T')[0],
+            dia_vencimento: (gasto.dia_vencimento ?? '').toString(),
+            categoria: gasto.categoria ? gasto.categoria.toString() : '',
+            orcamento: ''
+          });
+          setShowForm(true);
+          setFormErrors({});
+          return;
+        }
+
+        // Caso contrário, é um gasto fixo "inferido" (gasto_fixo_cat_) e edita a movimentação original
+        const idOriginal = getMovimentacaoIdOriginal(movimentacao);
         const response = await movimentacaoFinanceiraService.getMovimentacao(idOriginal);
-        movimentacaoParaEditar = response.data;
+        const movimentacaoParaEditar = response.data;
+        setEditingMovimentacao(movimentacaoParaEditar);
+        setEditingGastoFixoId(null);
+        setFormData({
+          descricao: movimentacaoParaEditar.descricao,
+          detalhes: movimentacaoParaEditar.detalhes || '',
+          valor: movimentacaoParaEditar.valor.toString(),
+          tipo: movimentacaoParaEditar.tipo,
+          tipo_movimentacao: movimentacaoParaEditar.tipo_movimentacao || 'COMUM',
+          data_movimentacao: movimentacaoParaEditar.data_movimentacao,
+          dia_vencimento: '',
+          categoria: movimentacaoParaEditar.categoria ? movimentacaoParaEditar.categoria.toString() : '',
+          orcamento: movimentacaoParaEditar.orcamento ? movimentacaoParaEditar.orcamento.toString() : ''
+        });
+        setShowForm(true);
+        setFormErrors({});
+        return;
       }
-      
-      setEditingMovimentacao(movimentacaoParaEditar);
+
+      // Movimentação real
+      setEditingMovimentacao(movimentacao);
+      setEditingGastoFixoId(null);
       setFormData({
-        descricao: movimentacaoParaEditar.descricao,
-        detalhes: movimentacaoParaEditar.detalhes || '',
-        valor: movimentacaoParaEditar.valor.toString(),
-        tipo: movimentacaoParaEditar.tipo,
-        tipo_movimentacao: movimentacaoParaEditar.tipo_movimentacao || 'COMUM',
-        data_movimentacao: movimentacaoParaEditar.data_movimentacao,
-        categoria: movimentacaoParaEditar.categoria ? movimentacaoParaEditar.categoria.toString() : '',
-        orcamento: movimentacaoParaEditar.orcamento ? movimentacaoParaEditar.orcamento.toString() : ''
+        descricao: movimentacao.descricao,
+        detalhes: movimentacao.detalhes || '',
+        valor: movimentacao.valor.toString(),
+        tipo: movimentacao.tipo,
+        tipo_movimentacao: movimentacao.tipo_movimentacao || 'COMUM',
+        data_movimentacao: movimentacao.data_movimentacao,
+        dia_vencimento: '',
+        categoria: movimentacao.categoria ? movimentacao.categoria.toString() : '',
+        orcamento: movimentacao.orcamento ? movimentacao.orcamento.toString() : ''
       });
       setShowForm(true);
       setFormErrors({});
@@ -261,9 +360,19 @@ const Financeiro = () => {
   const handleDelete = async (item) => {
     try {
       setLoading(true);
-      // Se for um gasto fixo projetado, extrai o ID original
-      const idParaExcluir = getIdOriginal(item);
-      await movimentacaoFinanceiraService.deleteMovimentacao(idParaExcluir);
+      if (item.tipoItem === 'gasto_fixo') {
+        const gastoFixoId = getGastoFixoIdOriginal(item);
+        if (gastoFixoId) {
+          await gastoFixoService.deleteGastoFixo(gastoFixoId);
+        } else {
+          // Gasto fixo "inferido" (movimentação categorizada antiga)
+          const idParaExcluir = getMovimentacaoIdOriginal(item);
+          await movimentacaoFinanceiraService.deleteMovimentacao(idParaExcluir);
+        }
+      } else {
+        const idParaExcluir = getMovimentacaoIdOriginal(item);
+        await movimentacaoFinanceiraService.deleteMovimentacao(idParaExcluir);
+      }
       await fetchMovimentacoes();
       setDeleteConfirm(null);
       setError('');
@@ -291,10 +400,12 @@ const Financeiro = () => {
       tipo: 'SAIDA',
       tipo_movimentacao: 'COMUM',
       data_movimentacao: new Date().toISOString().split('T')[0],
+      dia_vencimento: '',
       categoria: '',
       orcamento: ''
     });
     setEditingMovimentacao(null);
+    setEditingGastoFixoId(null);
     setFormErrors({});
   };
 
@@ -447,31 +558,35 @@ const Financeiro = () => {
       {showForm && (
         <div className="form-card">
           <div className="form-card-header">
-            <h2>{editingMovimentacao ? 'Editar Movimentação' : 'Nova Movimentação'}</h2>
+            <h2>
+              {(editingMovimentacao || editingGastoFixoId)
+                ? (formData.tipo_movimentacao === 'CATEGORIZADA' ? 'Editar Gasto Fixo' : 'Editar Movimentação')
+                : (formData.tipo_movimentacao === 'CATEGORIZADA' ? 'Novo Gasto Fixo' : 'Nova Movimentação')}
+            </h2>
             <button onClick={handleCancelForm} className="btn-close">
               ×
             </button>
           </div>
           <form onSubmit={handleSubmit} className="financeiro-form">
-            {formData.tipo_movimentacao === 'COMUM' && (
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="descricao">Descrição *</label>
-                  <input
-                    type="text"
-                    id="descricao"
-                    name="descricao"
-                    value={formData.descricao}
-                    onChange={handleChange}
-                    className={formErrors.descricao ? 'error' : ''}
-                    placeholder="Ex: Pagamento de fornecedor"
-                  />
-                  {formErrors.descricao && (
-                    <span className="error-message">{formErrors.descricao}</span>
-                  )}
-                </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="descricao">
+                  {formData.tipo_movimentacao === 'CATEGORIZADA' ? 'Nome do Gasto Fixo *' : 'Descrição *'}
+                </label>
+                <input
+                  type="text"
+                  id="descricao"
+                  name="descricao"
+                  value={formData.descricao}
+                  onChange={handleChange}
+                  className={formErrors.descricao ? 'error' : ''}
+                  placeholder={formData.tipo_movimentacao === 'CATEGORIZADA' ? 'Ex: Salários' : 'Ex: Pagamento de fornecedor'}
+                />
+                {formErrors.descricao && (
+                  <span className="error-message">{formErrors.descricao}</span>
+                )}
               </div>
-            )}
+            </div>
 
             <div className="form-row">
               <div className="form-group">
@@ -502,6 +617,7 @@ const Financeiro = () => {
                   value={formData.tipo}
                   onChange={handleChange}
                   className={formErrors.tipo ? 'error' : ''}
+                  disabled={formData.tipo_movimentacao === 'CATEGORIZADA'}
                 >
                   <option value="ENTRADA">Entrada</option>
                   <option value="SAIDA">Saída</option>
@@ -529,22 +645,24 @@ const Financeiro = () => {
               </div>
             </div>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="data_movimentacao">Data *</label>
-                <input
-                  type="date"
-                  id="data_movimentacao"
-                  name="data_movimentacao"
-                  value={formData.data_movimentacao}
-                  onChange={handleChange}
-                  className={formErrors.data_movimentacao ? 'error' : ''}
-                />
-                {formErrors.data_movimentacao && (
-                  <span className="error-message">{formErrors.data_movimentacao}</span>
-                )}
+            {formData.tipo_movimentacao === 'COMUM' && (
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="data_movimentacao">Data *</label>
+                  <input
+                    type="date"
+                    id="data_movimentacao"
+                    name="data_movimentacao"
+                    value={formData.data_movimentacao}
+                    onChange={handleChange}
+                    className={formErrors.data_movimentacao ? 'error' : ''}
+                  />
+                  {formErrors.data_movimentacao && (
+                    <span className="error-message">{formErrors.data_movimentacao}</span>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {formData.tipo_movimentacao === 'CATEGORIZADA' && (
               <>
@@ -560,7 +678,7 @@ const Financeiro = () => {
                     >
                       <option value="">Selecione uma categoria</option>
                     {Array.isArray(categorias) && categorias
-                      .filter(cat => cat.tipo === formData.tipo)
+                      .filter(cat => cat.tipo === 'SAIDA')
                       .map(cat => (
                         <option key={cat.id} value={cat.id}>
                           {cat.nome}
@@ -573,6 +691,32 @@ const Financeiro = () => {
                 </div>
 
                 <div className="form-group">
+                  <label htmlFor="dia_vencimento">Dia de Vencimento (1-31) *</label>
+                  <input
+                    type="number"
+                    id="dia_vencimento"
+                    name="dia_vencimento"
+                    value={formData.dia_vencimento}
+                    onChange={handleChange}
+                    min="1"
+                    max="31"
+                    className={formErrors.dia_vencimento ? 'error' : ''}
+                    placeholder="Ex: 10"
+                  />
+                  <small className="help-text">
+                    Usado para projetar o gasto fixo todo mês.
+                  </small>
+                  {formErrors.dia_vencimento && (
+                    <span className="error-message">{formErrors.dia_vencimento}</span>
+                  )}
+                </div>
+              </div>
+              </>
+            )}
+
+            {formData.tipo_movimentacao === 'COMUM' && (
+              <div className="form-row">
+                <div className="form-group">
                   <label htmlFor="detalhes">Detalhes Adicionais</label>
                   <input
                     type="text"
@@ -581,17 +725,13 @@ const Financeiro = () => {
                     value={formData.detalhes}
                     onChange={handleChange}
                     className={formErrors.detalhes ? 'error' : ''}
-                    placeholder="Ex: Nome do funcionário, fornecedor, etc."
+                    placeholder="Ex: Observações"
                   />
-                  <small className="help-text">
-                    Informações extras que serão adicionadas à descrição automaticamente
-                  </small>
                   {formErrors.detalhes && (
                     <span className="error-message">{formErrors.detalhes}</span>
                   )}
                 </div>
               </div>
-              </>
             )}
 
             <div className="form-actions">

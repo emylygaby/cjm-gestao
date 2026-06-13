@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from calendar import monthrange
 
-from .models import MovimentacaoFinanceira, Parcelamento
+from .models import MovimentacaoFinanceira, Parcelamento, GastoFixo
 from orcamentos.models import Orcamento, OrcamentoItem
 from produtos.models import Produto
 
@@ -60,52 +60,26 @@ def _eh_orcamento_mao_obra(orcamento):
 
 def _calcular_gastos_fixos_projetados(primeiro_dia_mes, ultimo_dia_mes):
     """
-    Projeta saídas recorrentes com base em movimentações categorizadas antigas.
-    Regra de histórico:
-    - aparece no mês se foi criada antes do mês consultado;
-    - some do mês atual/futuros quando excluída;
-    - permanece em meses já passados quando excluída depois daquele mês.
+    Projeta saídas recorrentes com base no cadastro de gastos fixos (model GastoFixo).
+    Regra:
+    - MENSAL: soma valor no mês
+    - SEMANAL: converte para mês (aprox. 4 semanas)
+    - ANUAL: converte para mês (divide por 12)
     """
-    movimentacoes_reais_mes = MovimentacaoFinanceira.objects.filter(
-        data_movimentacao__gte=primeiro_dia_mes,
-        data_movimentacao__lte=ultimo_dia_mes,
-        tipo='SAIDA',
-        tipo_movimentacao='CATEGORIZADA'
-    )
+    total_mensal = GastoFixo.objects.filter(periodo='MENSAL').aggregate(
+        total=Coalesce(Sum('valor'), Decimal('0.00'))
+    )['total']
 
-    fim_mes_datetime = timezone.make_aware(
-        datetime.combine(ultimo_dia_mes, datetime.max.time())
-    )
+    total_semanal = GastoFixo.objects.filter(periodo='SEMANAL').aggregate(
+        total=Coalesce(Sum('valor'), Decimal('0.00'))
+    )['total']
 
-    recorrentes = MovimentacaoFinanceira.all_objects.filter(
-        tipo='SAIDA',
-        tipo_movimentacao='CATEGORIZADA',
-        data_movimentacao__lt=primeiro_dia_mes
-    ).filter(
-        Q(deleted_at__isnull=True) | Q(deleted_at__gt=fim_mes_datetime)
-    ).select_related('categoria')
+    total_anual = GastoFixo.objects.filter(periodo='ANUAL').aggregate(
+        total=Coalesce(Sum('valor'), Decimal('0.00'))
+    )['total']
 
-    total = Decimal('0.00')
-    gastos_adicionados = set()
-
-    for mov in recorrentes:
-        categoria_nome = mov.categoria.nome if mov.categoria else 'Sem categoria'
-        chave = f"{mov.descricao}_{mov.valor}_{categoria_nome}"
-
-        if chave in gastos_adicionados:
-            continue
-
-        duplicado_no_mes = movimentacoes_reais_mes.filter(
-            descricao=mov.descricao,
-            valor=mov.valor,
-            categoria=mov.categoria
-        ).exists()
-
-        if not duplicado_no_mes:
-            total += mov.valor
-            gastos_adicionados.add(chave)
-
-    return total
+    # Conversões aproximadas para mensal
+    return (total_mensal or Decimal('0.00')) + (total_semanal or Decimal('0.00')) * 4 + (total_anual or Decimal('0.00')) / 12
 
 
 @api_view(['GET'])

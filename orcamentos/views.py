@@ -105,6 +105,16 @@ class OrcamentoViewSet(viewsets.ModelViewSet):
                 {'error': 'Status inválido'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        if not orcamento.pode_alterar_para(novo_status):
+            return Response(
+                {
+                    'error': (
+                        f"Transição de status inválida: não é permitido voltar de {orcamento.status} para {novo_status}."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         orcamento.status = novo_status
         orcamento.save()
@@ -116,6 +126,24 @@ class OrcamentoViewSet(viewsets.ModelViewSet):
     def processar_pagamento(self, request, pk=None):
         """Endpoint para processar o pagamento quando o orçamento mudar para EM_ANDAMENTO"""
         orcamento = self.get_object()
+
+        # Não permite processar pagamento se isso implicar regressão ou se o orçamento já estiver terminal.
+        if not orcamento.pode_alterar_para('EM_ANDAMENTO'):
+            return Response(
+                {
+                    'error': (
+                        f"Não é possível processar pagamento: status atual {orcamento.status} não permite ir para EM_ANDAMENTO."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Evita duplicação: se já existe movimentação financeira vinculada ao orçamento, bloqueia.
+        if MovimentacaoFinanceira.objects.filter(orcamento=orcamento, tipo='ENTRADA').exists():
+            return Response(
+                {'error': 'Pagamento já foi processado para este orçamento.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         
         # Valida os dados do pagamento
         serializer = OrcamentoParcelamentoSerializer(data=request.data)

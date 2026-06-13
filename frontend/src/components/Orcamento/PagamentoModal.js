@@ -118,6 +118,7 @@ function PagamentoModal({ orcamento, onClose, onSuccess }) {
             {orcamento.tipo_orcamento === 'MAO_OBRA' && (
               <p><strong>Tipo:</strong> Mão de Obra</p>
             )}
+            <p><strong>Atenção:</strong> ao confirmar o pagamento o status será alterado para "Em Andamento" e não será possível voltar.</p>
           </div>
 
           {error && <div className="error-message">{error}</div>}
