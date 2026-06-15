@@ -14,6 +14,25 @@ body {
   background: #f8fafc;
   color: #1e293b;
   line-height: 1.6;
+  overflow-x: hidden;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
 }
 
 code {

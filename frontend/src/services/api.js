@@ -257,4 +257,19 @@ export const gastoFixoService = {
     apiClient.post(`/financeiro/gastos-fixos/${id}/gerar_movimentacao/`, data),
 };
 
+export const parcelamentoService = {
+  // Listar todos os parcelamentos
+  getParcelamentos: (params) => apiClient.get('/financeiro/parcelamentos/', { params }),
+
+  // Obter um parcelamento específico
+  getParcelamento: (id) => apiClient.get(`/financeiro/parcelamentos/${id}/`),
+
+  // Atualizar parcelamento
+  updateParcelamento: (id, parcelamentoData) => apiClient.patch(`/financeiro/parcelamentos/${id}/`, parcelamentoData),
+
+  // Marcar parcelamento como pago
+  marcarPago: (id, dataPagamento) =>
+    apiClient.post(`/financeiro/parcelamentos/${id}/marcar_pago/`, dataPagamento ? { data_pagamento: dataPagamento } : {}),
+};
+
 export default apiClient;

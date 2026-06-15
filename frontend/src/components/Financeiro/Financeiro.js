@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { categoriaFinanceiraService, movimentacaoFinanceiraService, gastoFixoService } from '../../services/api';
+import { categoriaFinanceiraService, movimentacaoFinanceiraService, gastoFixoService, parcelamentoService } from '../../services/api';
 import './Financeiro.css';
 
 const Financeiro = () => {
@@ -17,6 +17,11 @@ const Financeiro = () => {
   const [anoSelecionado, setAnoSelecionado] = useState(hoje.getFullYear());
   const [previsaoMensal, setPrevisaoMensal] = useState(null);
   const [editingGastoFixoId, setEditingGastoFixoId] = useState(null);
+  const [editingParcelamento, setEditingParcelamento] = useState(null);
+  const [parcelamentoForm, setParcelamentoForm] = useState({
+    status: 'PENDENTE',
+    data_pagamento: new Date().toISOString().split('T')[0]
+  });
   
   const [formData, setFormData] = useState({
     descricao: '',
@@ -287,6 +292,18 @@ const Financeiro = () => {
     return null;
   };
 
+  const getParcelamentoIdOriginal = (item) => {
+    if (item.parcelamento_id) {
+      return item.parcelamento_id;
+    }
+
+    if (item.tipoItem === 'parcelamento' && typeof item.id === 'string' && item.id.startsWith('parcela_')) {
+      return parseInt(item.id.replace('parcela_', ''), 10);
+    }
+
+    return item.id;
+  };
+
   const handleEdit = async (movimentacao) => {
     try {
       // Se for um gasto fixo vindo da tabela GastoFixo, edita como regra recorrente
@@ -382,6 +399,55 @@ const Financeiro = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEditParcelamento = (parcelamento) => {
+    setEditingParcelamento(parcelamento);
+    setParcelamentoForm({
+      status: parcelamento.status || 'PENDENTE',
+      data_pagamento: parcelamento.data_pagamento || new Date().toISOString().split('T')[0]
+    });
+    setError('');
+  };
+
+  const handleChangeParcelamentoForm = (e) => {
+    const { name, value } = e.target;
+    setParcelamentoForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSaveParcelamento = async (e) => {
+    e.preventDefault();
+
+    if (!editingParcelamento) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const payload = {
+        status: parcelamentoForm.status,
+        data_pagamento: parcelamentoForm.status === 'PAGO' ? parcelamentoForm.data_pagamento : null
+      };
+
+      const parcelamentoId = getParcelamentoIdOriginal(editingParcelamento);
+      await parcelamentoService.updateParcelamento(parcelamentoId, payload);
+      await fetchMovimentacoes();
+      setEditingParcelamento(null);
+      setError('');
+    } catch (error) {
+      console.error('Erro ao atualizar parcelamento:', error);
+      setError('Erro ao atualizar parcelamento');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelParcelamento = () => {
+    setEditingParcelamento(null);
   };
 
   const confirmDelete = (movimentacao) => {
@@ -814,7 +880,13 @@ const Financeiro = () => {
                     )}
                     {mov.tipoItem === 'parcelamento' && (
                       <div className="action-buttons">
-                        <span className="info-text">Ver no orçamento</span>
+                        <button
+                          onClick={() => handleEditParcelamento(mov)}
+                          className="btn-action btn-paid"
+                          title="Editar parcela"
+                        >
+                          {mov.status === 'PAGO' ? '✅' : '💰'}
+                        </button>
                       </div>
                     )}
                   </td>
@@ -853,6 +925,55 @@ const Financeiro = () => {
                 {loading ? 'Excluindo...' : 'Excluir'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {editingParcelamento && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>Editar parcela</h3>
+            <p>
+              Atualize o status da parcela {editingParcelamento.numero_parcela}/{editingParcelamento.total_parcelas}
+              {' '}de {editingParcelamento.orcamento_cliente || editingParcelamento.cliente || 'orçamento'}.
+            </p>
+
+            <form onSubmit={handleSaveParcelamento} className="parcelamento-form">
+              <div className="form-group">
+                <label htmlFor="parcelamento-status">Status</label>
+                <select
+                  id="parcelamento-status"
+                  name="status"
+                  value={parcelamentoForm.status}
+                  onChange={handleChangeParcelamentoForm}
+                >
+                  <option value="PENDENTE">Pendente</option>
+                  <option value="PAGO">Pago</option>
+                  <option value="ATRASADO">Atrasado</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="parcelamento-data-pagamento">Data de pagamento</label>
+                <input
+                  id="parcelamento-data-pagamento"
+                  type="date"
+                  name="data_pagamento"
+                  value={parcelamentoForm.data_pagamento}
+                  onChange={handleChangeParcelamentoForm}
+                  disabled={parcelamentoForm.status !== 'PAGO'}
+                />
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" onClick={handleCancelParcelamento} className="btn btn-secondary">
+                  Cancelar
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={loading}>
+                  {loading ? 'Salvando...' : 'Salvar alterações'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

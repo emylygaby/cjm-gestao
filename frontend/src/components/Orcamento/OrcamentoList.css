@@ -322,3 +322,47 @@
     font-size: 0.75rem;
   }
 }
+
+@media (max-width: 640px) {
+  .orcamento-list-container {
+    padding: 1rem 0.75rem;
+  }
+
+  .header-content h1 {
+    font-size: 1.35rem;
+  }
+
+  .orcamentos-table {
+    min-width: 720px;
+  }
+
+  .actions-cell {
+    gap: 0.4rem;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-actions .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .orcamento-list-container {
+    padding: 0.75rem 0.5rem;
+  }
+
+  .header-content p {
+    font-size: 0.92rem;
+  }
+
+  .orcamentos-table {
+    min-width: 680px;
+  }
+
+  .btn-sm {
+    width: 100%;
+  }
+}

@@ -455,3 +455,55 @@
     font-size: 2rem;
   }
 }
+
+@media (max-width: 640px) {
+  .produto-manager-container {
+    padding: 0 0.5rem;
+  }
+
+  .page-header {
+    gap: 1rem;
+  }
+
+  .header-content h1 {
+    font-size: 1.6rem;
+  }
+
+  .produto-form,
+  .form-card-header {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .produtos-table {
+    min-width: 720px;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .form-actions .btn,
+  .btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .produto-form-card,
+  .produtos-table-container {
+    border-radius: 10px;
+  }
+
+  .form-card-header h2 {
+    font-size: 1.2rem;
+  }
+
+  .produto-form {
+    padding: 0.9rem;
+  }
+
+  .produtos-table {
+    min-width: 680px;
+  }
+}

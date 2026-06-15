@@ -167,9 +167,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
   background: transparent;
@@ -177,6 +179,8 @@
 
 .btn-action svg {
   display: block;
+  width: 20px;
+  height: 20px;
 }
 
 .btn-action.btn-edit {
@@ -221,6 +225,74 @@
   
   .clientes-table {
     min-width: 900px;
+  }
+}
+
+@media (max-width: 640px) {
+  .list-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .header-content h1 {
+    font-size: 1.9rem;
+  }
+
+  .clientes-table {
+    min-width: 760px;
+  }
+
+  .clientes-table th,
+  .clientes-table td {
+    padding: 0.85rem 0.75rem;
+  }
+
+  .action-buttons {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .cliente-list-container {
+    margin: 0 0.25rem;
+  }
+
+  .header-content h1 {
+    font-size: 1.6rem;
+  }
+
+  .header-content p {
+    font-size: 0.95rem;
+  }
+
+  .clientes-table {
+    min-width: 700px;
+  }
+
+  .email-cell,
+  .endereco-cell {
+    max-width: 120px;
+  }
+
+  .modal-actions,
+  .card-footer,
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .btn {
+    width: 100%;
+  }
+
+  .btn-action {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .btn-action svg {
+    width: 18px;
+    height: 18px;
   }
 }
 

@@ -22,6 +22,7 @@
   align-items: center;
   padding: 0 2rem;
   height: 64px;
+  position: relative;
 }
 
 .nav-logo {
@@ -40,6 +41,46 @@
   display: flex;
   gap: 2rem;
   align-items: center;
+}
+
+.nav-toggle {
+  display: none;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 5px;
+  padding: 0;
+}
+
+.nav-toggle span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: #ffffff;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.nav-toggle.open span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+
+.nav-toggle.open span:nth-child(2) {
+  opacity: 0;
+}
+
+.nav-toggle.open span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+.nav-backdrop {
+  display: none;
 }
 
 .nav-link {
@@ -106,34 +147,79 @@
 @media (max-width: 768px) {
   .nav-container {
     padding: 0 1rem;
-    flex-direction: column;
-    height: auto;
     gap: 1rem;
-    padding-top: 1rem;
-    padding-bottom: 1rem;
+    height: 64px;
+  }
+
+  .nav-toggle {
+    display: inline-flex;
+  }
+
+  .nav-backdrop.open {
+    display: block;
+    position: fixed;
+    inset: 64px 0 0 0;
+    background: rgba(15, 23, 42, 0.28);
+    backdrop-filter: blur(2px);
+    z-index: 998;
   }
   
   .nav-menu {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 1rem;
+    left: 1rem;
+    display: none;
     flex-direction: column;
-    gap: 0.5rem;
-    width: 100%;
-  }
-  
-  .nav-link {
-    width: 100%;
-    text-align: center;
-  }
-
-  .nav-user {
-    width: 100%;
-    text-align: center;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-radius: 18px;
+    background: rgba(15, 23, 42, 0.96);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.25);
+    z-index: 999;
+    max-height: calc(100vh - 88px);
+    overflow-y: auto;
   }
 
+  .nav-menu.open {
+    display: flex;
+  }
+
+  .nav-link,
+  .nav-user,
   .nav-logout {
     width: 100%;
   }
   
+  .nav-link {
+    text-align: center;
+    padding: 0.8rem 1rem;
+  }
+
+  .nav-user {
+    text-align: center;
+  }
+
+  .nav-logout {
+    padding: 0.8rem 1rem;
+  }
+  
   .main-content {
     padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-container {
+    padding: 0 0.75rem;
+  }
+
+  .nav-logo {
+    font-size: 1.2rem;
+  }
+
+  .main-content {
+    padding: 0.75rem;
   }
 }
